@@ -1,6 +1,7 @@
 import os
 from base64 import b64encode
 
+import requests
 from sendgrid import SendGridAPIClient, Email
 from sendgrid.helpers.mail import Mail, Content, Attachment
 
@@ -12,27 +13,23 @@ class Client(object):
 
         self.client = SendGridAPIClient(apikey=_secret).client.mail.send
 
-
-    def send_email(self, to, from_, subject, body, attachments=None):
-        attachments = attachments or []
-
-        print 'hello there'
-
+    def send_email(self, email):
         mail = Mail(
-            to_email=Email(to),
-            from_email=Email(from_),
-            subject=subject,
-            content=Content("text/plain", "Hello, Email!")
+            to_email=Email(email.to, email.to_name),
+            from_email=Email(email.from_, email.from_name),
+            subject=email.subject,
+            content=Content("text/plain", email.body)
         )
 
-        for content in attachments:
+        for a in email.attachments:
             attachment = Attachment()
-            attachment.filename = 'fax.pdf'
-            attachment.content = b64encode(content).decode()
+            attachment.filename = a.name
+            attachment.content = self.url_content(a.url)
 
             mail.add_attachment(attachment)
 
-        response = self.client.post(request_body=mail.get())
-        print(response.status_code)
-        print(response.body)
-        print(response.headers)
+        self.client.post(request_body=mail.get())
+
+    def url_content(self, url):
+        response = requests.get(url)
+        return b64encode(response.content).decode()

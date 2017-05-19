@@ -1,7 +1,7 @@
 import os
-import requests
 
 from faxbox.fax.client import Client as FaxClient
+from faxbox.mail import Mail, Attachment
 from faxbox.mail.client import Client as EmailClient
 from flask import Flask, request
 
@@ -19,13 +19,31 @@ def register():
 
 @app.route('/ReceiveFax', methods=['POST'])
 def receive_fax():
-    return '', 202
-
-
-@app.route('/StatusUpdate', methods=['POST'])
-def status_update():
     print request.values
     return '', 202
+
+
+@app.route('/StatusCallback', methods=['GET', 'POST'])
+def status_update():
+    if 'OriginalMediaUrl' in request.values:
+        sender = request.values.get('From')
+        mail = Mail(
+            to='niu@jingming.ca',
+            from_='f{}@faxbox.com'.format(sender),
+            from_name=sender,
+            subject='Fax from {}!'.format(sender),
+            body='You\'ve received the attached fax from {}'.format(sender),
+            attachments=[
+                Attachment(
+                    'fax.pdf',
+                    request.values.get('OriginalMediaUrl')
+                )
+            ]
+        )
+        email_client.send_email(mail)
+        return '', 200
+
+    return '', 204
 
 
 if __name__ == '__main__':
