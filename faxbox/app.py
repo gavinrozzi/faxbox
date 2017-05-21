@@ -9,21 +9,23 @@ app = Flask(__name__)
 fax_client = FaxClient()
 email_client = EmailClient()
 
-@app.route('/register', methods=['POST'])
+@app.route('/')
+def index():
+    return 'faxbox', 200
+
+@app.route('/api/register', methods=['POST'])
 def register():
-
-
 
     return ''
 
 
-@app.route('/ReceiveFax', methods=['POST'])
+@app.route('/api/receive', methods=['POST'])
 def receive_fax():
     print request.values
     return '', 202
 
 
-@app.route('/StatusCallback', methods=['GET', 'POST'])
+@app.route('/api/callback', methods=['GET', 'POST'])
 def status_update():
     if 'OriginalMediaUrl' in request.values:
         sender = request.values.get('From')
