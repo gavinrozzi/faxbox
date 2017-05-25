@@ -11,6 +11,16 @@ class Client(object):
 
         self.client = Twilio(_username, _password)
 
+    def send_fax(self, to, from_, media_url, status_callback=None):
+        fax = self.client.fax.faxes.create(
+            from_,
+            to,
+            media_url,
+            status_callback=status_callback,
+        )
+
+        return fax.sid
+
     def get_fax(self, fax_sid):
         import requests
         fax = self.client.fax.faxes.get(fax_sid).fetch()
