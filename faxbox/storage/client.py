@@ -8,7 +8,7 @@ class Client(object):
 
     def __init__(self, credentials=None):
         credentials = credentials or Client.load_credentials()
-        self.client = storage.Client(credentials=credentials)
+        self.client = storage.Client(project=os.environ.get('GCE_PROJECT_ID'), credentials=credentials)
         self.bucket = self.client.get_bucket('faxbox')
 
     @classmethod
