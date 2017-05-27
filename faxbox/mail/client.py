@@ -1,7 +1,7 @@
 import os
-from base64 import b64encode
-
 import requests
+
+from base64 import b64encode
 from sendgrid import SendGridAPIClient, Email
 from sendgrid.helpers.mail import Mail, Content, Attachment
 

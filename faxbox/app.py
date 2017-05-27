@@ -12,7 +12,7 @@ email_client = EmailClient()
 storage_client = StorageClient()
 
 
-@app.route('/')
+@app.route('/', methods=['GET'])
 def index():
     return 'faxbox', 200
 
@@ -24,7 +24,6 @@ def email():
 
     file = request.files['attachment1']
     public_url = storage_client.upload('fax.pdf', file)
-
     fax_sid = fax_client.send_fax(
         'FROM',
         'TO',
@@ -32,7 +31,7 @@ def email():
         status_callback='CALLBACK'
     )
 
-    return 'Saved', 202
+    return fax_sid, 202
 
 
 @app.route('/api/v1/register', methods=['POST'])
@@ -41,13 +40,7 @@ def register():
     return ''
 
 
-@app.route('/api/v1/receive', methods=['POST'])
-def fax():
-    print request.values
-    return '', 202
-
-
-@app.route('/api/v1/callback', methods=['GET', 'POST'])
+@app.route('/api/v1/callback', methods=['POST'])
 def callback():
     if 'OriginalMediaUrl' in request.values:
         sender = request.values.get('From')
@@ -67,7 +60,7 @@ def callback():
         email_client.send_email(mail)
         return '', 200
 
-    return '', 204
+    return '', 200
 
 
 if __name__ == '__main__':

@@ -1,4 +1,5 @@
 import os
+import requests
 
 from faxbox.fax import Fax
 from twilio.rest import Client as Twilio
@@ -22,7 +23,6 @@ class Client(object):
         return fax.sid
 
     def get_fax(self, fax_sid):
-        import requests
         fax = self.client.fax.faxes.get(fax_sid).fetch()
         data = requests.get(fax.media_url)
 
