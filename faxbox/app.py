@@ -46,7 +46,7 @@ def email():
         to_number,
         from_number,
         public_url,
-        status_callback='http://faxbox.email/api/v1/callback'
+        status_callback='http://www.faxbox.email/api/v1/callback'
     )
 
     return fax_sid, 202
