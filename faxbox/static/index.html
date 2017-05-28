@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Faxbox</title>
+
+        <link href="https://fonts.googleapis.com/css?family=Raleway" rel="stylesheet">
+        <link href="/static/css/index.css" rel="stylesheet" type="text/css" />
+
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+        <script type="text/javascript" src="/static/js/index.js"></script>
+    </head>
+
+    <body>
+
+    <section class="header">
+        <img src="/static/img/fax.png" />
+        <div class="title">Faxbox</div>
+    </section>
+
+    <section class="content">
+        <input id="NAME_INPUT" type="text" name="name" placeholder="Name" />
+        <input id="EMAIL_INPUT" type="text" name="email" placeholder="Email Address" />
+        <input id="CONFIRM_EMAIL_INPUT" type="text" name="confirm-email" placeholder="Confirm Email Address" />
+        <div class="submit">Get a Faxbox!</div>
+    </section>
+
+    <section class="error hidden">
+        <div class="error-message">Sorry we were unable to create a Faxbox!</div>
+    </section>
+
+    <section class="finish hidden">
+        <div class="congrats">Congratulations on your very own Faxbox!</div>
+        <div class="fax-to">Any fax sent to {number} will be emailed to {email}.</div>
+        <div class="fax-from">To send a fax using your Faxbox send emails to f+{fax_number}@mail.faxbox.email from {email}.</div>
+    </section>
+
+    </body>
+</html>

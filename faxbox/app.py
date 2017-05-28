@@ -1,7 +1,6 @@
+import datetime
 import json
 import os
-
-import datetime
 
 from faxbox.db.client import Client as DbClient
 from faxbox.fax.client import Client as FaxClient
@@ -10,15 +9,16 @@ from faxbox.mail.client import Client as EmailClient
 from faxbox.storage.client import Client as StorageClient
 from flask import Flask, request
 
-app = Flask(__name__)
+app = Flask(__name__, static_url_path='/static')
 fax_client = FaxClient()
 email_client = EmailClient()
 storage_client = StorageClient()
 db_client = DbClient()
 
+
 @app.route('/', methods=['GET'])
 def index():
-    return 'faxbox', 200
+    return app.send_static_file('index.html'), 200
 
 
 @app.route('/api/v1/email', methods=['POST'])
