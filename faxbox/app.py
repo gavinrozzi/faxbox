@@ -1,5 +1,9 @@
+import json
 import os
 
+import datetime
+
+from faxbox.db.client import Client as DbClient
 from faxbox.fax.client import Client as FaxClient
 from faxbox.mail import Mail, Attachment
 from faxbox.mail.client import Client as EmailClient
@@ -10,7 +14,7 @@ app = Flask(__name__)
 fax_client = FaxClient()
 email_client = EmailClient()
 storage_client = StorageClient()
-
+db_client = DbClient()
 
 @app.route('/', methods=['GET'])
 def index():
@@ -22,13 +26,27 @@ def email():
     if 'attachment1' not in request.files:
         return 'No attachment found', 400
 
+    if 'from' not in request.values:
+        return 'Missing parameter from', 400
+
+    if 'to' not in request.values:
+        return 'Missing parameter to', 400
+
+    from_ = request.values.get('from')
+    to = request.values.get('to')
+
+    from_user = db_client.fetch_user_by_email(from_)
+    from_number =  os.environ.get('DEFAULT_FAX_NUMBER') if from_user is None else from_user.number
+    to_number = to.replace('@mail.faxbox.email', '')[1:]
+
     file = request.files['attachment1']
-    public_url = storage_client.upload('fax.pdf', file)
+    filename = '{}-{}-{}.pdf'.format(from_number, to_number, datetime.datetime.now().isoformat())
+    public_url = storage_client.upload(filename, file)
     fax_sid = fax_client.send_fax(
-        'FROM',
-        'TO',
+        to_number,
+        from_number,
         public_url,
-        status_callback='CALLBACK'
+        status_callback='http://faxbox.email/api/v1/callback'
     )
 
     return fax_sid, 202
@@ -36,16 +54,36 @@ def email():
 
 @app.route('/api/v1/register', methods=['POST'])
 def register():
+    if 'name' not in request.values:
+        return 'Missing parameter name', 400
 
-    return ''
+    if 'email' not in request.values:
+        return 'Missing parameter email', 400
+
+    number = fax_client.create_fax_number(request.values.get('email'))
+    try:
+        db_client.add_user(request.values.get('name'), request.values.get('email'), number)
+    except Exception:
+        return 'Failed to add user', 400
+
+    return json.dumps({
+        'name': request.values.get('name'),
+        'email': request.values.get('email'),
+        'number': number
+    }), 201
 
 
 @app.route('/api/v1/callback', methods=['POST'])
 def callback():
     if 'OriginalMediaUrl' in request.values:
         sender = request.values.get('From')
+        user = db_client.fetch_user_by_number(request.values.get('To'))
+
+        if not user:
+            return 'Could not send email', 400
+
         mail = Mail(
-            to='TO',
+            to=user.email,
             from_='f{}@faxbox.com'.format(sender),
             from_name=sender,
             subject='Fax from {}!'.format(sender),

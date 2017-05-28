@@ -7,10 +7,10 @@ from twilio.rest import Client as Twilio
 class Client(object):
 
     def __init__(self, username=None, password=None):
-        _username = username or os.environ.get('TWILIO_ACCOUNT_SID')
-        _password = password or os.environ.get('TWILIO_AUTH_TOKEN')
+        self.username = username or os.environ.get('TWILIO_ACCOUNT_SID')
+        self.password = password or os.environ.get('TWILIO_AUTH_TOKEN')
 
-        self.client = Twilio(_username, _password)
+        self.client = Twilio(self.username, self.password)
 
     def send_fax(self, to, from_, media_url, status_callback=None):
         fax = self.client.fax.faxes.create(
@@ -32,3 +32,24 @@ class Client(object):
             fax.from_,
             data.content
         )
+
+    def create_fax_number(self, email):
+        numbers = requests.get(
+            'https://api.twilio.com/2010-04-01/Accounts/{}/AvailablePhoneNumbers/US/Local.json'.format(self.username),
+            params={
+                'FaxEnabled': True
+            },
+            auth=(self.username, self.password)
+        )
+
+        for number in numbers.json()['available_phone_numbers']:
+            purchased_number = requests.post(
+                'https://api.twilio.com/2010-04-01/Accounts/{}/IncomingPhoneNumbers.json'.format(self.username),
+                data={
+                    'FriendlyName': 'Fax number for {}'.format(email),
+                    'PhoneNumber': number['phone_number'],
+                    'VoiceReceiveMode': 'fax'
+                },
+                auth=(self.username, self.password)
+            )
+            return purchased_number.json()['phone_number']
