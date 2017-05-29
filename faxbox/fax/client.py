@@ -24,13 +24,12 @@ class Client(object):
 
     def get_fax(self, fax_sid):
         fax = self.client.fax.faxes.get(fax_sid).fetch()
-        data = requests.get(fax.media_url)
-
         return Fax(
             fax.sid,
             fax.to,
             fax.from_,
-            data.content
+            fax.media_url,
+            fax.status
         )
 
     def create_fax_number(self, email):
@@ -48,7 +47,9 @@ class Client(object):
                 data={
                     'FriendlyName': 'Fax number for {}'.format(email),
                     'PhoneNumber': number['phone_number'],
-                    'VoiceReceiveMode': 'fax'
+                    'VoiceReceiveMode': 'fax',
+                    'VoiceUrl': 'http://www.faxbox.email/api/v1/receive',
+                    'VoiceMethod': 'POST',
                 },
                 auth=(self.username, self.password)
             )

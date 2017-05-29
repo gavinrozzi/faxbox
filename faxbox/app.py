@@ -1,6 +1,7 @@
 import datetime
 import json
 import os
+from time import sleep
 
 from faxbox.db.client import Client as DbClient
 from faxbox.fax.client import Client as FaxClient
@@ -45,8 +46,7 @@ def email():
     fax_sid = fax_client.send_fax(
         to_number,
         from_number,
-        public_url,
-        status_callback='http://www.faxbox.email/api/v1/callback'
+        public_url
     )
 
     return fax_sid, 202
@@ -73,31 +73,38 @@ def register():
     }), 201
 
 
-@app.route('/api/v1/callback', methods=['POST'])
-def callback():
-    if 'OriginalMediaUrl' in request.values:
-        sender = request.values.get('From')
-        user = db_client.fetch_user_by_number(request.values.get('To'))
+@app.route('/api/v1/receive', methods=['POST'])
+def receive():
+    if 'FaxSid' not in request.values:
+        return 'No fax sid provided', 400
 
-        if not user:
-            return 'Could not send email', 400
+    sender = request.values.get('From')
+    user = db_client.fetch_user_by_number(request.values.get('To'))
+    if not user:
+        return 'Could not send email', 400
 
-        mail = Mail(
-            to=user.email,
-            from_='f{}@faxbox.com'.format(sender),
-            from_name=sender,
-            subject='Fax from {}!'.format(sender),
-            body='You\'ve received the attached fax from {}'.format(sender),
-            attachments=[
-                Attachment(
-                    'fax.pdf',
-                    request.values.get('OriginalMediaUrl')
-                )
-            ]
-        )
-        email_client.send_email(mail)
-        return '', 200
+    fax = fax_client.get_fax(request.values.get('FaxSid'))
+    while not fax or not fax.media_url:
+        sleep(5)
+        fax = fax_client.get_fax(request.values.get('FaxSid'))
 
+        if fax.status == 'failed':
+            return 'Failed to receive fax', 400
+
+    mail = Mail(
+        to=user.email,
+        from_='f{}@faxbox.com'.format(sender),
+        from_name=sender,
+        subject='Fax from {}!'.format(sender),
+        body='You\'ve received the attached fax from {}'.format(sender),
+        attachments=[
+            Attachment(
+                'fax.pdf',
+                fax.media_url
+            )
+        ]
+    )
+    email_client.send_email(mail)
     return '', 200
 
 
