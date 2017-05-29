@@ -1,14 +1,14 @@
 import datetime
-import json
 import os
-from time import sleep
 
+from faxbox import BadRequest, Success, NotFound
 from faxbox.db.client import Client as DbClient
 from faxbox.fax.client import Client as FaxClient
 from faxbox.mail import Mail, Attachment
 from faxbox.mail.client import Client as EmailClient
 from faxbox.storage.client import Client as StorageClient
 from flask import Flask, request
+from time import sleep
 
 app = Flask(__name__, static_url_path='/static')
 fax_client = FaxClient()
@@ -25,63 +25,64 @@ def index():
 @app.route('/api/v1/email', methods=['POST'])
 def email():
     if 'attachment1' not in request.files:
-        return 'No attachment found', 400
+        return BadRequest('No attachment found.')
 
     if 'from' not in request.values:
-        return 'Missing parameter from', 400
+        return BadRequest('Missing parameter `from`.')
 
     if 'to' not in request.values:
-        return 'Missing parameter to', 400
+        return BadRequest('Missing parameter `to`.')
 
-    from_ = request.values.get('from')
-    to = request.values.get('to')
-
-    from_user = db_client.fetch_user_by_email(from_)
+    from_user = db_client.fetch_user_by_email(request.values.get('from'))
     from_number =  os.environ.get('DEFAULT_FAX_NUMBER') if from_user is None else from_user.number
-    to_number = to.replace('@mail.faxbox.email', '')[1:]
+    to_number = request.values.get('to').replace('@mail.faxbox.email', '')[1:]
 
-    file = request.files['attachment1']
-    filename = '{}-{}-{}.pdf'.format(from_number, to_number, datetime.datetime.now().isoformat())
-    public_url = storage_client.upload(filename, file)
-    fax_sid = fax_client.send_fax(
-        to_number,
-        from_number,
-        public_url
+    public_url = storage_client.upload(
+        '{}-{}-{}.pdf'.format(from_number, to_number, datetime.datetime.now().isoformat()),
+        request.files['attachment1']
     )
 
-    return fax_sid, 202
+    fax_sid = fax_client.send_fax(to_number, from_number, public_url)
+    return Success({
+        'fax_sid': fax_sid,
+        'from': from_number,
+        'to': to_number,
+        'media_url': public_url
+    }, status=201)
 
 
 @app.route('/api/v1/register', methods=['POST'])
 def register():
     if 'name' not in request.values:
-        return 'Missing parameter name', 400
+        return BadRequest('Missing parameter `name`.')
 
     if 'email' not in request.values:
-        return 'Missing parameter email', 400
+        return BadRequest('Missing parameter `email`.')
 
-    number = fax_client.create_fax_number(request.values.get('email'))
     try:
-        db_client.add_user(request.values.get('name'), request.values.get('email'), number)
-    except Exception:
-        return 'Failed to add user', 400
 
-    return json.dumps({
-        'name': request.values.get('name'),
-        'email': request.values.get('email'),
-        'number': number
-    }), 201
+        number = fax_client.create_fax_number(request.values.get('email'))
+        db_client.add_user(request.values.get('name'), request.values.get('email'), number)
+
+        return Success({
+            'name': request.values.get('name'),
+            'email': request.values.get('email'),
+            'number': number
+        }, status=201)
+
+    except Exception:
+        return BadRequest('Failed to add user.')
 
 
 @app.route('/api/v1/receive', methods=['POST'])
 def receive():
     if 'FaxSid' not in request.values:
-        return 'No fax sid provided', 400
+        return BadRequest('Missing parameter `FaxSid`.')
 
     sender = request.values.get('From')
     user = db_client.fetch_user_by_number(request.values.get('To'))
     if not user:
-        return 'Could not send email', 400
+        return NotFound('No email found for {}.'.format(request.values.get('To')))
 
     fax = fax_client.get_fax(request.values.get('FaxSid'))
     while not fax or not fax.media_url:
@@ -89,7 +90,7 @@ def receive():
         fax = fax_client.get_fax(request.values.get('FaxSid'))
 
         if fax.status == 'failed':
-            return 'Failed to receive fax', 400
+            return BadRequest('Failed to receive fax.')
 
     mail = Mail(
         to=user.email,
@@ -105,7 +106,11 @@ def receive():
         ]
     )
     email_client.send_email(mail)
-    return '', 200
+    return Success({
+        'to': user.email,
+        'from': 'f{}@faxbox.com'.format(sender),
+        'media_url': fax.media_url
+    }, status=201)
 
 
 if __name__ == '__main__':
