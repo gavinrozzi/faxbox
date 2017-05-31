@@ -19,9 +19,7 @@ window.onload = function() {
         $.post('/api/v1/register', {
             name: name,
             email: email
-        }, function(data) {
-            var number = JSON.parse(data);
-
+        }, function(number) {
             var faxTo = $('.fax-to').text()
                 .replace('{number}', number.number)
                 .replace('{email}', number.email);
