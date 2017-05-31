@@ -74,23 +74,24 @@ def register():
         return BadRequest('Failed to add user.')
 
 
+@app.route('/api/v1/sent', methods=['POST'])
+def fax_sent():
+    return """
+        <Response>
+            <Receive action="/api/v1/receive"/>
+        </Response>
+    """, 200
+
+
 @app.route('/api/v1/receive', methods=['POST'])
 def receive():
-    if 'FaxSid' not in request.values:
-        return BadRequest('Missing parameter `FaxSid`.')
+    if 'MediaUrl' not in request.values:
+        return BadRequest('Missing parameter `MediaUrl`.')
 
     sender = request.values.get('From')
     user = db_client.fetch_user_by_number(request.values.get('To'))
     if not user:
         return NotFound('No email found for {}.'.format(request.values.get('To')))
-
-    fax = fax_client.get_fax(request.values.get('FaxSid'))
-    while not fax or not fax.media_url:
-        sleep(5)
-        fax = fax_client.get_fax(request.values.get('FaxSid'))
-
-        if fax.status == 'failed':
-            return BadRequest('Failed to receive fax.')
 
     mail = Mail(
         to=user.email,
@@ -101,7 +102,7 @@ def receive():
         attachments=[
             Attachment(
                 'fax.pdf',
-                fax.media_url
+                request.values.get('MediaUrl')
             )
         ]
     )
@@ -109,7 +110,7 @@ def receive():
     return Success({
         'to': user.email,
         'from': 'f{}@faxbox.com'.format(sender),
-        'media_url': fax.media_url
+        'media_url': request.values.get('MediaUrl')
     }, status=201)
 
 

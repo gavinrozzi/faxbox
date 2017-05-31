@@ -47,10 +47,19 @@ class Client(object):
                 data={
                     'FriendlyName': 'Fax number for {}'.format(email),
                     'PhoneNumber': number['phone_number'],
-                    'VoiceReceiveMode': 'fax',
-                    'VoiceUrl': 'http://www.faxbox.email/api/v1/receive',
+                    'VoiceUrl': 'http://www.faxbox.email/api/v1/sent',
                     'VoiceMethod': 'POST',
                 },
                 auth=(self.username, self.password)
             )
-            return purchased_number.json()['phone_number']
+
+            data = purchased_number.json()
+            requests.post(
+                'https://api.twilio.com/2010-04-01/Accounts/{}/IncomingPhoneNumbers/{}.json'.format(self.username, data['sid']),
+                data={
+                    'VoiceReceiveMode': 'fax',
+                },
+                auth=(self.username, self.password)
+            )
+
+            return data['phone_number']
