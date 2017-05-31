@@ -31,13 +31,19 @@ def email():
     if 'envelope' not in request.values:
         return BadRequest('Missing parameter `envelope`.')
 
-    if 'to' not in request.values:
-        return BadRequest('Missing parameter `to`.')
-
     envelope = json.loads(request.values.get('envelope'))
     from_user = db_client.fetch_user_by_email(envelope['from'])
     from_number =  os.environ.get('DEFAULT_FAX_NUMBER') if from_user is None else from_user.number
-    to_number = request.values.get('to').replace('@mail.faxbox.email', '')[1:]
+
+    to_number = None
+    tos = envelope['to']
+    for to in tos:
+        if to.startswith('f+'):
+            to_number = to
+            break
+
+    if to_number is None:
+        return BadRequest('No `to` number found.')
 
     public_url = storage_client.upload(
         '{}-{}-{}.pdf'.format(from_number, to_number, datetime.datetime.now().isoformat()),
