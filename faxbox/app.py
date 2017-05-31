@@ -1,4 +1,5 @@
 import datetime
+import json
 import os
 
 from faxbox import BadRequest, Success, NotFound
@@ -27,13 +28,14 @@ def email():
     if 'attachment1' not in request.files:
         return BadRequest('No attachment found.')
 
-    if 'from' not in request.values:
-        return BadRequest('Missing parameter `from`.')
+    if 'envelope' not in request.values:
+        return BadRequest('Missing parameter `envelope`.')
 
     if 'to' not in request.values:
         return BadRequest('Missing parameter `to`.')
 
-    from_user = db_client.fetch_user_by_email(request.values.get('from'))
+    envelope = json.loads(request.values.get('envelope'))
+    from_user = db_client.fetch_user_by_email(envelope['from'])
     from_number =  os.environ.get('DEFAULT_FAX_NUMBER') if from_user is None else from_user.number
     to_number = request.values.get('to').replace('@mail.faxbox.email', '')[1:]
 
@@ -95,7 +97,7 @@ def receive():
 
     mail = Mail(
         to=user.email,
-        from_='f{}@faxbox.com'.format(sender),
+        from_='f{}@mail.faxbox.email'.format(sender),
         from_name=sender,
         subject='Fax from {}!'.format(sender),
         body='You\'ve received the attached fax from {}'.format(sender),
@@ -109,7 +111,7 @@ def receive():
     email_client.send_email(mail)
     return Success({
         'to': user.email,
-        'from': 'f{}@faxbox.com'.format(sender),
+        'from': 'f{}@mail.faxbox.email'.format(sender),
         'media_url': request.values.get('MediaUrl')
     }, status=201)
 
