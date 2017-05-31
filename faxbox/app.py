@@ -39,7 +39,7 @@ def email():
     tos = envelope['to']
     for to in tos:
         if to.startswith('f+'):
-            to_number = to
+            to_number = to.replace('@mail.faxbox.email', '')[1:]
             break
 
     if to_number is None:
